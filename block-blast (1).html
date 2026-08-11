@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>ブラスターブロック</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#0d0618;
+    --bg-cabinet:#170c28;
+    --bg-panel:#1e1236;
+    --bg-cell:#291a44;
+    --bg-cell-line:#3a2660;
+    --neon-pink:#ff2e7a;
+    --neon-cyan:#19e8d6;
+    --neon-amber:#ffc22e;
+    --neon-lime:#8cff5c;
+    --neon-violet:#b98cff;
+    --text-main:#f4ecff;
+    --text-dim:#9c86c4;
+    --cell-size: 38px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, #2a1550 0%, transparent 60%),
+      var(--bg-deep);
+    color:var(--text-main);
+    font-family:'M PLUS Rounded 1c',sans-serif;
+    overflow-x:hidden;
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;
+    -webkit-user-select:none;user-select:none;
+    touch-action:none;
+  }
+  button{ font-family:inherit; }
+  .cabinet{
+    position:relative;
+    width:min(94vw, 420px);
+    margin:16px auto;
+    padding:16px 14px 20px;
+    border-radius:22px;
+    background:linear-gradient(180deg,var(--bg-cabinet),#120a22 70%);
+    border:1px solid #3a2660;
+    box-shadow:
+      0 0 0 1px #0a0512,
+      0 20px 50px -15px rgba(0,0,0,0.7),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .cabinet::before{
+    content:"";
+    position:absolute;inset:-2px;
+    border-radius:24px;
+    padding:2px;
+    background:linear-gradient(135deg,var(--neon-pink),var(--neon-violet) 40%,var(--neon-cyan) 70%,var(--neon-amber));
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+    mask-composite:exclude;
+    opacity:0.55;
+    pointer-events:none;
+  }
+  .marquee{
+    text-align:center;
+    padding:6px 0 10px;
+    position:relative;
+  }
+  .marquee h1{
+    margin:0;
+    font-family:'DotGothic16',sans-serif;
+    font-size:clamp(22px,7vw,30px);
+    letter-spacing:0.12em;
+    color:#fff;
+    text-shadow:
+      0 0 4px #fff,
+      0 0 14px var(--neon-pink),
+      0 0 28px var(--neon-pink),
+      0 0 46px rgba(255,46,122,0.5);
+    animation:flicker 5s infinite ease-in-out;
+  }
+  @keyframes flicker{
+    0%,96%,100%{opacity:1;}
+    97%{opacity:0.8;}
+    98%{opacity:1;}
+    99%{opacity:0.75;}
+  }
+  .view[hidden]{ display:none; }
+
+  /* ---------- shared score/wallet chips ---------- */
+  .chip-row{
+    display:flex;gap:10px;
+    margin:4px 0 14px;
+  }
+  .chip{
+    flex:1;
+    background:var(--bg-panel);
+    border-radius:12px;
+    padding:8px 10px 10px;
+    border:1px solid #3a2660;
+    text-align:center;
+  }
+  .chip .label{
+    display:block;
+    font-size:11px;
+    letter-spacing:0.14em;
+    color:var(--text-dim);
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .chip .value{
+    display:block;
+    font-family:'DotGothic16',sans-serif;
+    font-size:clamp(18px,6vw,24px);
+    color:var(--neon-amber);
+    text-shadow:0 0 10px rgba(255,194,46,0.65);
+    margin-top:2px;
+    letter-spacing:0.03em;
+  }
+  .chip.money .value{ color:var(--neon-lime); text-shadow:0 0 10px rgba(140,255,92,0.65); }
+  .chip.time .value{ color:var(--neon-cyan); text-shadow:0 0 10px rgba(25,232,214,0.65); }
+  .chip.time.low .value{ color:var(--neon-pink); text-shadow:0 0 10px rgba(255,46,122,0.75); }
+
+  /* ---------- buttons ---------- */
+  .btn{
+    display:block;
+    width:100%;
+    font-weight:800;
+    font-size:15px;
+    padding:13px 20px;
+    border-radius:999px;
+    border:none;
+    cursor:pointer;
+    text-align:center;
+  }
+  .btn:active{ transform:scale(0.97); }
+  .btn-primary{
+    background:linear-gradient(135deg,var(--neon-pink),var(--neon-violet));
+    color:#fff;
+    box-shadow:0 4px 16px rgba(255,46,122,0.4);
+  }
+  .btn-secondary{
+    background:var(--bg-panel);
+    color:var(--text-main);
+    border:1px solid #3a2660;
+  }
+  .btn-money{
+    background:linear-gradient(135deg,var(--neon-lime),#3ecf8e);
+    color:#0d2417;
+    box-shadow:0 4px 16px rgba(140,255,92,0.3);
+  }
+  .btn:disabled{ opacity:0.35; cursor:default; box-shadow:none; }
+  .btn-stack{ display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+  .btn-row{ display:flex; gap:8px; }
+  .btn-row .btn{ flex:1; }
+
+  /* ---------- home view ---------- */
+  .home-best{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:12px;
+    margin:14px 0 0;
+    letter-spacing:0.04em;
+  }
+  .home-best b{ color:var(--neon-amber); font-family:'DotGothic16',sans-serif; }
+
+  /* ---------- shop view ---------- */
+  .shop-head{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .shop-head h2{
+    margin:0;
+    font-family:'DotGothic16',sans-serif;
+    font-size:18px;
+    letter-spacing:0.08em;
+  }
+  .back-btn{
+    background:none;border:none;color:var(--text-dim);
+    font-size:14px;cursor:pointer;padding:4px 6px;
+  }
+  .shop-list{ display:flex;flex-direction:column;gap:10px; }
+  .shop-item{
+    display:flex;align-items:center;gap:12px;
+    background:var(--bg-panel);
+    border:1px solid #3a2660;
+    border-radius:14px;
+    padding:10px 12px;
+  }
+  .shop-icon{
+    width:42px;height:42px;flex:none;
+    border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;
+    background:var(--bg-cell);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  .shop-info{ flex:1; min-width:0; }
+  .shop-info .name{ font-weight:800; font-size:14px; }
+  .shop-info .desc{ font-size:11.5px; color:var(--text-dim); margin-top:1px; }
+  .shop-info .owned{ font-size:11px; color:var(--neon-cyan); margin-top:2px; }
+  .shop-buy{
+    flex:none;
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    background:var(--bg-cell);
+    border:1px solid #3a2660;
+    border-radius:10px;
+    padding:7px 10px;
+    color:var(--text-main);
+    cursor:pointer;
+    font-weight:800;
+    font-size:12px;
+  }
+  .shop-buy .price{ color:var(--neon-lime); font-family:'DotGothic16',sans-serif; font-size:13px; }
+  .shop-buy:disabled{ opacity:0.35; cursor:default; }
+
+  /* ---------- game view ---------- */
+  .inv-bar{
+    display:flex;gap:8px;
+    margin-bottom:10px;
+    min-height:0;
+  }
+  .inv-btn{
+    flex:1;
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    background:var(--bg-panel);
+    border:1px solid #3a2660;
+    border-radius:12px;
+    padding:8px 4px;
+    color:var(--text-main);
+    cursor:pointer;
+    font-size:11px;
+    font-weight:800;
+  }
+  .inv-btn .ic{ font-size:16px; }
+  .inv-btn .n{ color:var(--neon-cyan); font-family:'DotGothic16',sans-serif; }
+  .inv-btn:disabled{ opacity:0.3; cursor:default; }
+
+  .board-wrap{
+    position:relative;
+  }
+  .board{
+    display:grid;
+    grid-template-columns:repeat(8,1fr);
+    grid-template-rows:repeat(8,1fr);
+    gap:3px;
+    background:var(--bg-cell-line);
+    border-radius:10px;
+    padding:6px;
+    border:1px solid #3a2660;
+    aspect-ratio:1/1;
+    width:100%;
+  }
+  .cell{
+    background:var(--bg-cell);
+    border-radius:4px;
+    position:relative;
+    transition:background 0.12s, box-shadow 0.12s;
+  }
+  .cell.filled{ box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15), 0 0 10px var(--glow-color, transparent);}
+  .cell.c-pink{ background:var(--neon-pink); --glow-color:rgba(255,46,122,0.7);}
+  .cell.c-cyan{ background:var(--neon-cyan); --glow-color:rgba(25,232,214,0.7);}
+  .cell.c-amber{ background:var(--neon-amber); --glow-color:rgba(255,194,46,0.7);}
+  .cell.c-lime{ background:var(--neon-lime); --glow-color:rgba(140,255,92,0.7);}
+  .cell.c-violet{ background:var(--neon-violet); --glow-color:rgba(185,140,255,0.7);}
+  .cell.preview-ok{ box-shadow: inset 0 0 0 2px #fff, 0 0 10px rgba(255,255,255,0.6); background:rgba(255,255,255,0.28);}
+  .cell.preview-bad{ box-shadow: inset 0 0 0 2px var(--neon-pink); background:rgba(255,46,122,0.18);}
+  .cell.clearing{ animation:pop 0.32s ease-out forwards; }
+  @keyframes pop{
+    0%{ transform:scale(1); filter:brightness(1);}
+    40%{ transform:scale(1.15); filter:brightness(2);}
+    100%{ transform:scale(0.2); filter:brightness(2.6); opacity:0;}
+  }
+  .shard{
+    position:fixed;
+    width:6px;height:6px;
+    border-radius:1px;
+    pointer-events:none;
+    z-index:80;
+  }
+  .tray{
+    display:flex;
+    justify-content:space-between;
+    gap:6px;
+    margin-top:16px;
+    min-height:calc(var(--cell-size)*3 + 10px);
+  }
+  .piece-slot{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--bg-panel);
+    border-radius:12px;
+    border:1px solid #3a2660;
+    padding:6px;
+    min-height:96px;
+  }
+  .piece-slot.empty{ opacity:0.25; }
+  .piece-grid{
+    display:grid;
+    touch-action:none;
+    cursor:grab;
+  }
+  .piece-grid.dragging-source{ opacity:0.25; }
+  .piece-cell{ border-radius:3px; }
+  .piece-cell.on{ box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);}
+  .drag-ghost{
+    position:fixed;
+    top:0;left:0;
+    display:grid;
+    pointer-events:none;
+    z-index:100;
+    opacity:0.95;
+    filter:drop-shadow(0 6px 10px rgba(0,0,0,0.5));
+  }
+  .go-overlay{
+    position:absolute;inset:6px;
+    background:rgba(10,5,20,0.94);
+    border-radius:10px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    z-index:50;
+    backdrop-filter:blur(2px);
+    padding:16px;
+  }
+  .go-overlay[hidden]{ display:none; }
+  .go-title{
+    font-family:'DotGothic16',sans-serif;
+    font-size:26px;
+    color:var(--neon-pink);
+    text-shadow:0 0 16px var(--neon-pink), 0 0 32px var(--neon-pink);
+    margin:0;
+    letter-spacing:0.1em;
+  }
+  .go-score{
+    font-family:'DotGothic16',sans-serif;
+    color:var(--neon-amber);
+    font-size:18px;
+    margin:0;
+  }
+  .go-points{
+    color:var(--neon-lime);
+    font-size:12.5px;
+    margin:0;
+    text-align:center;
+  }
+  .go-best{
+    color:var(--text-dim);
+    font-size:12px;
+    margin:0;
+    text-align:center;
+  }
+  .go-btns{ display:flex; flex-direction:column; gap:8px; width:100%; margin-top:4px; }
+  .foot-note{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:11px;
+    margin-top:12px;
+    letter-spacing:0.04em;
+    line-height:1.5;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .marquee h1{ animation:none; }
+    .cell.clearing{ animation:none; opacity:0; }
+  }
+</style>
+</head>
+<body>
+  <div class="cabinet">
+    <div class="marquee"><h1>ブラスターブロック</h1></div>
+
+    <!-- ===== HOME VIEW ===== -->
+    <section class="view" id="view-home">
+      <div class="chip-row">
+        <div class="chip money"><span class="label">所持金</span><span class="value" id="homeMoney">0</span></div>
+        <div class="chip"><span class="label">未換金ポイント</span><span class="value" id="homePoints">0</span></div>
+      </div>
+      <div class="btn-stack">
+        <button class="btn btn-money" id="convertBtn">ポイントをお金に変える</button>
+        <button class="btn btn-primary" id="startBtn">ゲームスタート</button>
+        <button class="btn btn-secondary" id="shopBtn">ショップ</button>
+      </div>
+      <p class="home-best">ハイスコア <b id="homeBest">000000</b></p>
+    </section>
+
+    <!-- ===== SHOP VIEW ===== -->
+    <section class="view" id="view-shop" hidden>
+      <div class="shop-head">
+        <button class="back-btn" id="shopBackBtn">← ホーム</button>
+        <h2>ショップ</h2>
+        <span class="chip money" style="flex:none;padding:4px 10px;"><span class="value" id="shopMoney" style="font-size:15px;">0</span></span>
+      </div>
+      <div class="shop-list" id="shopList"></div>
+    </section>
+
+    <!-- ===== GAME VIEW ===== -->
+    <section class="view" id="view-game" hidden>
+      <div class="chip-row">
+        <div class="chip"><span class="label">SCORE</span><span class="value" id="scoreVal">000000</span></div>
+        <div class="chip time" id="timeChip"><span class="label">TIME</span><span class="value" id="timeVal">60</span></div>
+      </div>
+      <div class="inv-bar" id="invBar"></div>
+      <div class="board-wrap">
+        <div class="board" id="board"></div>
+        <div class="go-overlay" id="goOverlay" hidden>
+          <p class="go-title">GAME OVER</p>
+          <p class="go-score">SCORE <span id="finalScore">0</span></p>
+          <p class="go-points" id="goPointsNote"></p>
+          <p class="go-best" id="newBestNote"></p>
+          <div class="go-btns">
+            <button class="btn btn-primary" id="retryBtn">もう一度あそぶ</button>
+            <button class="btn btn-secondary" id="homeFromGoBtn">ホームへ</button>
+          </div>
+        </div>
+      </div>
+      <div class="tray" id="tray"></div>
+      <p class="foot-note">ドラッグしてマス目にはめ、たて・よこを揃えて消そう<br>制限時間内にできるだけ高得点を狙おう</p>
+    </section>
+  </div>
+  <div id="dragLayer"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  const BOARD_SIZE = 8;
+  const GAME_TIME = 60;
+  const COLORS = ["c-pink","c-cyan","c-amber","c-lime","c-violet"];
+
+  const ITEMS = [
+    { key:"undo",  name:"1手戻す",   desc:"直前に置いたブロックを取り消す", price:30,  icon:"↺" },
+    { key:"ext5",  name:"+5秒",     desc:"残り時間を5秒延長する",         price:20,  icon:"⏱" },
+    { key:"ext10", name:"+10秒",    desc:"残り時間を10秒延長する",        price:45,  icon:"⏱" },
+    { key:"ext30", name:"+30秒",    desc:"残り時間を30秒延長する",        price:120, icon:"⏱" },
+  ];
+
+  // Shape pool: each shape is a list of [col,row] offsets, normalized to start at 0,0
+  const SHAPES = [
+    [[0,0]],
+    [[0,0],[1,0]],
+    [[0,0],[0,1]],
+    [[0,0],[1,0],[2,0]],
+    [[0,0],[0,1],[0,2]],
+    [[0,0],[1,0],[2,0],[3,0]],
+    [[0,0],[0,1],[0,2],[0,3]],
+    [[0,0],[1,0],[2,0],[3,0],[4,0]],
+    [[0,0],[0,1],[0,2],[0,3],[0,4]],
+    [[0,0],[1,0],[0,1],[1,1]],
+    [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]],
+    [[0,0],[0,1],[0,2],[1,2]],
+    [[1,0],[1,1],[1,2],[0,2]],
+    [[0,0],[1,0],[1,1],[1,2]],
+    [[0,0],[0,1],[0,2],[1,0]],
+    [[0,0],[1,0],[2,0],[0,1]],
+    [[0,0],[1,0],[2,0],[2,1]],
+    [[0,1],[1,1],[2,1],[2,0]],
+    [[0,0],[0,1],[1,1],[1,2]],
+    [[0,0],[1,0],[1,1],[2,1]],
+    [[1,0],[0,1],[1,1],[2,1],[1,2]],
+    [[0,0],[1,0],[2,0],[1,1],[1,2]],
+    [[1,0],[1,1],[0,1],[2,1],[1,2]],
+  ];
+
+  // ---------- views ----------
+  const views = {
+    home: document.getElementById("view-home"),
+    shop: document.getElementById("view-shop"),
+    game: document.getElementById("view-game"),
+  };
+  function showView(name){
+    Object.entries(views).forEach(([k,el])=>{ el.hidden = (k!==name); });
+  }
+
+  // ---------- DOM refs ----------
+  const boardEl = document.getElementById("board");
+  const trayEl = document.getElementById("tray");
+  const invBarEl = document.getElementById("invBar");
+  const scoreValEl = document.getElementById("scoreVal");
+  const timeValEl = document.getElementById("timeVal");
+  const timeChipEl = document.getElementById("timeChip");
+  const goOverlay = document.getElementById("goOverlay");
+  const finalScoreEl = document.getElementById("finalScore");
+  const goPointsNoteEl = document.getElementById("goPointsNote");
+  const newBestNoteEl = document.getElementById("newBestNote");
+  const retryBtn = document.getElementById("retryBtn");
+  const homeFromGoBtn = document.getElementById("homeFromGoBtn");
+  const dragLayer = document.getElementById("dragLayer");
+
+  const homeMoneyEl = document.getElementById("homeMoney");
+  const homePointsEl = document.getElementById("homePoints");
+  const homeBestEl = document.getElementById("homeBest");
+  const convertBtn = document.getElementById("convertBtn");
+  const startBtn = document.getElementById("startBtn");
+  const shopBtn = document.getElementById("shopBtn");
+
+  const shopMoneyEl = document.getElementById("shopMoney");
+  const shopListEl = document.getElementById("shopList");
+  const shopBackBtn = document.getElementById("shopBackBtn");
+
+  // ---------- game state ----------
+  let grid = [];   // grid[row][col] = null | colorClass
+  let cells = [];  // DOM refs [row][col]
+  let tray = [null, null, null];
+  let score = 0;
+  let best = 0;
+  let timeLeft = GAME_TIME;
+  let timerId = null;
+  let clearTimeoutId = null;
+  let gameOver = false;
+  let undoSnapshot = null; // {grid, tray, score}
+
+  // ---------- wallet state (personal, not shared) ----------
+  let wallet = { money:0, bankedPoints:0, inventory:{ undo:0, ext5:0, ext10:0, ext30:0 } };
+
+  function pad6(n){ return String(n).padStart(6,"0"); }
+  function fmtScore(){ scoreValEl.textContent = pad6(score); }
+  function fmtTime(){
+    timeValEl.textContent = String(Math.max(0,timeLeft));
+    timeChipEl.classList.toggle("low", timeLeft<=10);
+  }
+
+  // ---------- local best score (this browser only) ----------
+  async function loadBest(){
+    try{
+      const raw = localStorage.getItem("block-blast-best");
+      if(raw) best = parseInt(raw,10) || 0;
+    }catch(e){ best = 0; }
+    homeBestEl.textContent = pad6(best);
+  }
+  async function saveBestIfHigher(){
+    try{
+      if(score > best){
+        best = score;
+        localStorage.setItem("block-blast-best", String(best));
+      }
+    }catch(e){ /* best-effort */ }
+    homeBestEl.textContent = pad6(best);
+  }
+
+  // ---------- personal wallet persistence (this browser only) ----------
+  async function loadWallet(){
+    try{
+      const raw = localStorage.getItem("block-blast-wallet");
+      if(raw){
+        const parsed = JSON.parse(raw);
+        wallet.money = parsed.money || 0;
+        wallet.bankedPoints = parsed.bankedPoints || 0;
+        wallet.inventory = Object.assign({undo:0,ext5:0,ext10:0,ext30:0}, parsed.inventory||{});
+      }
+    }catch(e){ /* start fresh */ }
+    renderWalletUI();
+  }
+  async function saveWallet(){
+    try{
+      localStorage.setItem("block-blast-wallet", JSON.stringify(wallet));
+    }catch(e){ /* best-effort */ }
+  }
+  function renderWalletUI(){
+    homeMoneyEl.textContent = wallet.money;
+    homePointsEl.textContent = wallet.bankedPoints;
+    convertBtn.disabled = wallet.bankedPoints<=0;
+    shopMoneyEl.textContent = wallet.money;
+  }
+
+  // ---------- home actions ----------
+  convertBtn.addEventListener("click", async ()=>{
+    if(wallet.bankedPoints<=0) return;
+    wallet.money += wallet.bankedPoints;
+    wallet.bankedPoints = 0;
+    renderWalletUI();
+    await saveWallet();
+  });
+  startBtn.addEventListener("click", ()=>{
+    showView("game");
+    newGame();
+  });
+  shopBtn.addEventListener("click", ()=>{
+    renderShop();
+    showView("shop");
+  });
+  shopBackBtn.addEventListener("click", ()=>{
+    renderWalletUI();
+    showView("home");
+  });
+  homeFromGoBtn.addEventListener("click", ()=>{
+    stopTimer();
+    renderWalletUI();
+    showView("home");
+  });
+
+  // ---------- shop ----------
+  function renderShop(){
+    shopListEl.innerHTML = "";
+    ITEMS.forEach(item=>{
+      const row = document.createElement("div");
+      row.className = "shop-item";
+      const owned = wallet.inventory[item.key] || 0;
+      row.innerHTML = `
+        <div class="shop-icon">${item.icon}</div>
+        <div class="shop-info">
+          <div class="name">${item.name}</div>
+          <div class="desc">${item.desc}</div>
+          <div class="owned">所持数 ${owned}</div>
+        </div>
+      `;
+      const buyBtn = document.createElement("button");
+      buyBtn.className = "shop-buy";
+      buyBtn.innerHTML = `購入<span class="price">${item.price}</span>`;
+      buyBtn.disabled = wallet.money < item.price;
+      buyBtn.addEventListener("click", async ()=>{
+        if(wallet.money < item.price) return;
+        wallet.money -= item.price;
+        wallet.inventory[item.key] = (wallet.inventory[item.key]||0) + 1;
+        renderWalletUI();
+        renderShop();
+        await saveWallet();
+      });
+      row.appendChild(buyBtn);
+      shopListEl.appendChild(row);
+    });
+  }
+
+  // ---------- board ----------
+  function buildBoard(){
+    boardEl.innerHTML = "";
+    grid = [];
+    cells = [];
+    for(let r=0;r<BOARD_SIZE;r++){
+      const rowArr = [];
+      const rowCells = [];
+      for(let c=0;c<BOARD_SIZE;c++){
+        const cellEl = document.createElement("div");
+        cellEl.className = "cell";
+        boardEl.appendChild(cellEl);
+        rowArr.push(null);
+        rowCells.push(cellEl);
+      }
+      grid.push(rowArr);
+      cells.push(rowCells);
+    }
+  }
+
+  function randomShape(){ return SHAPES[Math.floor(Math.random()*SHAPES.length)]; }
+  function randomColor(){ return COLORS[Math.floor(Math.random()*COLORS.length)]; }
+  function shapeDims(shape){
+    let maxC=0, maxR=0;
+    for(const [c,r] of shape){ if(c>maxC) maxC=c; if(r>maxR) maxR=r; }
+    return {w:maxC+1, h:maxR+1};
+  }
+
+  function refillTray(){
+    for(let i=0;i<3;i++) tray[i] = { shape: randomShape(), color: randomColor() };
+    renderTray();
+    checkGameOver();
+  }
+
+  function renderTray(){
+    trayEl.innerHTML = "";
+    tray.forEach((piece, idx)=>{
+      const slot = document.createElement("div");
+      slot.className = "piece-slot" + (piece ? "" : " empty");
+      if(piece){
+        const {w,h} = shapeDims(piece.shape);
+        const pg = document.createElement("div");
+        pg.className = "piece-grid";
+        pg.style.gridTemplateColumns = `repeat(${w}, var(--cell-size))`;
+        pg.style.gridTemplateRows = `repeat(${h}, var(--cell-size))`;
+        pg.dataset.idx = idx;
+        const filled = new Set(piece.shape.map(([c,r])=>c+","+r));
+        for(let r=0;r<h;r++){
+          for(let c=0;c<w;c++){
+            const cellDiv = document.createElement("div");
+            cellDiv.className = "piece-cell";
+            if(filled.has(c+","+r)) cellDiv.classList.add("on", piece.color);
+            pg.appendChild(cellDiv);
+          }
+        }
+        slot.appendChild(pg);
+        pg.addEventListener("pointerdown", (e)=> startDrag(e, idx));
+      }
+      trayEl.appendChild(slot);
+    });
+    syncPieceCellSize();
+  }
+
+  function syncPieceCellSize(){
+    const boardRect = boardEl.getBoundingClientRect();
+    const cellPx = (boardRect.width - 12 - 7*3) / 8;
+    const trayCellPx = Math.max(16, cellPx * 0.62);
+    document.documentElement.style.setProperty("--cell-size", trayCellPx + "px");
+    document.querySelectorAll(".piece-cell").forEach(el=>{
+      el.style.width = trayCellPx + "px";
+      el.style.height = trayCellPx + "px";
+    });
+  }
+  function boardCellPx(){
+    const boardRect = boardEl.getBoundingClientRect();
+    return (boardRect.width - 12 - 7*3) / 8;
+  }
+
+  function canPlace(shape, originC, originR){
+    for(const [c,r] of shape){
+      const cc = originC + c, rr = originR + r;
+      if(cc<0||cc>=BOARD_SIZE||rr<0||rr>=BOARD_SIZE) return false;
+      if(grid[rr][cc]) return false;
+    }
+    return true;
+  }
+  function anyPlacement(shape){
+    for(let r=0;r<BOARD_SIZE;r++)
+      for(let c=0;c<BOARD_SIZE;c++)
+        if(canPlace(shape,c,r)) return true;
+    return false;
+  }
+  function checkGameOver(){
+    const active = tray.filter(p=>p);
+    const stillPlayable = active.some(p=>anyPlacement(p.shape));
+    if(!stillPlayable && active.length>0) endGame();
+  }
+  function clearPreview(){
+    for(let r=0;r<BOARD_SIZE;r++)
+      for(let c=0;c<BOARD_SIZE;c++)
+        cells[r][c].classList.remove("preview-ok","preview-bad");
+  }
+  function showPreview(shape, originC, originR){
+    clearPreview();
+    const ok = canPlace(shape, originC, originR);
+    for(const [c,r] of shape){
+      const cc = originC + c, rr = originR + r;
+      if(cc>=0&&cc<BOARD_SIZE&&rr>=0&&rr<BOARD_SIZE) cells[rr][cc].classList.add(ok?"preview-ok":"preview-bad");
+    }
+    return ok;
+  }
+
+  function snapshotState(){
+    return {
+      grid: grid.map(row=>row.slice()),
+      tray: tray.map(p=> p ? { shape:p.shape, color:p.color } : null),
+      score: score,
+    };
+  }
+
+  function placePiece(shape, color, originC, originR, trayIdx){
+    undoSnapshot = snapshotState();
+    for(const [c,r] of shape){
+      const cc = originC + c, rr = originR + r;
+      grid[rr][cc] = color;
+      cells[rr][cc].className = "cell filled " + color;
+    }
+    score += shape.length;
+    fmtScore();
+    resolveLines();
+    renderInvBar();
+  }
+
+  function resolveLines(){
+    const fullRows = [];
+    const fullCols = [];
+    for(let r=0;r<BOARD_SIZE;r++) if(grid[r].every(v=>v)) fullRows.push(r);
+    for(let c=0;c<BOARD_SIZE;c++){
+      let full = true;
+      for(let r=0;r<BOARD_SIZE;r++){ if(!grid[r][c]){ full=false; break; } }
+      if(full) fullCols.push(c);
+    }
+    const total = fullRows.length + fullCols.length;
+    if(total===0) return;
+
+    const toClear = new Set();
+    fullRows.forEach(r=>{ for(let c=0;c<BOARD_SIZE;c++) toClear.add(r+","+c); });
+    fullCols.forEach(c=>{ for(let r=0;r<BOARD_SIZE;r++) toClear.add(r+","+c); });
+
+    toClear.forEach(key=>{
+      const [r,c] = key.split(",").map(Number);
+      cells[r][c].classList.add("clearing");
+      burstShards(cells[r][c]);
+    });
+
+    const bonus = total*10 + Math.max(0,total-1)*15;
+    score += bonus;
+    fmtScore();
+    timeLeft += total; // small time reward per line cleared
+    fmtTime();
+
+    clearTimeoutId = setTimeout(()=>{
+      toClear.forEach(key=>{
+        const [r,c] = key.split(",").map(Number);
+        grid[r][c] = null;
+        cells[r][c].className = "cell";
+      });
+      clearTimeoutId = null;
+    }, 260);
+  }
+
+  function burstShards(cellEl){
+    const rect = cellEl.getBoundingClientRect();
+    const colorVars = ["var(--neon-pink)","var(--neon-cyan)","var(--neon-amber)","var(--neon-lime)","var(--neon-violet)"];
+    for(let i=0;i<5;i++){
+      const shard = document.createElement("div");
+      shard.className = "shard";
+      shard.style.left = (rect.left + rect.width/2) + "px";
+      shard.style.top = (rect.top + rect.height/2) + "px";
+      shard.style.background = colorVars[Math.floor(Math.random()*colorVars.length)];
+      document.body.appendChild(shard);
+      const angle = Math.random()*Math.PI*2;
+      const dist = 26 + Math.random()*34;
+      const dx = Math.cos(angle)*dist;
+      const dy = Math.sin(angle)*dist;
+      shard.animate([
+        { transform:"translate(0,0) rotate(0deg)", opacity:1 },
+        { transform:`translate(${dx}px,${dy}px) rotate(${Math.random()*360}deg)`, opacity:0 }
+      ], { duration: 420 + Math.random()*180, easing:"cubic-bezier(.2,.7,.3,1)" });
+      setTimeout(()=> shard.remove(), 650);
+    }
+  }
+
+  // ---------- inventory quick-use bar ----------
+  function renderInvBar(){
+    invBarEl.innerHTML = "";
+    const usable = [
+      { key:"undo",  icon:"↺", label:"戻す", use:useUndo, avail: ()=> !!undoSnapshot && (wallet.inventory.undo||0)>0 },
+      { key:"ext5",  icon:"⏱", label:"+5s",  use:()=>useExtend("ext5",5),  avail: ()=> (wallet.inventory.ext5||0)>0 },
+      { key:"ext10", icon:"⏱", label:"+10s", use:()=>useExtend("ext10",10), avail: ()=> (wallet.inventory.ext10||0)>0 },
+      { key:"ext30", icon:"⏱", label:"+30s", use:()=>useExtend("ext30",30), avail: ()=> (wallet.inventory.ext30||0)>0 },
+    ];
+    const owned = usable.filter(it => (wallet.inventory[it.key]||0) > 0);
+    if(owned.length===0) return;
+    owned.forEach(it=>{
+      const btn = document.createElement("button");
+      btn.className = "inv-btn";
+      btn.innerHTML = `<span class="ic">${it.icon}</span><span>${it.label}</span><span class="n">×${wallet.inventory[it.key]}</span>`;
+      btn.disabled = gameOver || !it.avail();
+      btn.addEventListener("click", it.use);
+      invBarEl.appendChild(btn);
+    });
+  }
+
+  async function useUndo(){
+    if(gameOver || !undoSnapshot || (wallet.inventory.undo||0)<=0) return;
+    if(clearTimeoutId){ clearTimeout(clearTimeoutId); clearTimeoutId = null; }
+    grid = undoSnapshot.grid.map(row=>row.slice());
+    for(let r=0;r<BOARD_SIZE;r++){
+      for(let c=0;c<BOARD_SIZE;c++){
+        const v = grid[r][c];
+        cells[r][c].className = v ? ("cell filled "+v) : "cell";
+      }
+    }
+    tray = undoSnapshot.tray.map(p=> p ? { shape:p.shape, color:p.color } : null);
+    score = undoSnapshot.score;
+    fmtScore();
+    renderTray();
+    undoSnapshot = null;
+    wallet.inventory.undo -= 1;
+    renderInvBar();
+    await saveWallet();
+  }
+  async function useExtend(key, seconds){
+    if(gameOver || (wallet.inventory[key]||0)<=0) return;
+    timeLeft += seconds;
+    fmtTime();
+    wallet.inventory[key] -= 1;
+    renderInvBar();
+    await saveWallet();
+  }
+
+  // ---------- timer ----------
+  function startTimer(){
+    stopTimer();
+    timerId = setInterval(()=>{
+      timeLeft -= 1;
+      fmtTime();
+      if(timeLeft<=0){
+        stopTimer();
+        endGame();
+      }
+    }, 1000);
+  }
+  function stopTimer(){
+    if(timerId){ clearInterval(timerId); timerId = null; }
+  }
+
+  // ---------- drag & drop ----------
+  function startDrag(e, idx){
+    if(gameOver) return;
+    const piece = tray[idx];
+    if(!piece) return;
+    e.preventDefault();
+
+    const sourceEl = e.currentTarget;
+    sourceEl.classList.add("dragging-source");
+    sourceEl.setPointerCapture && sourceEl.setPointerCapture(e.pointerId);
+
+    const cellPx = boardCellPx();
+    const {w,h} = shapeDims(piece.shape);
+    const filled = new Set(piece.shape.map(([c,r])=>c+","+r));
+
+    const ghost = document.createElement("div");
+    ghost.className = "drag-ghost";
+    ghost.style.gridTemplateColumns = `repeat(${w}, ${cellPx}px)`;
+    ghost.style.gridTemplateRows = `repeat(${h}, ${cellPx}px)`;
+    for(let r=0;r<h;r++){
+      for(let c=0;c<w;c++){
+        const d = document.createElement("div");
+        d.style.width = cellPx+"px";
+        d.style.height = cellPx+"px";
+        if(filled.has(c+","+r)){
+          d.style.borderRadius = "4px";
+          d.style.margin = "1.5px";
+          d.style.width = (cellPx-3)+"px";
+          d.style.height = (cellPx-3)+"px";
+          d.classList.add("cell","filled",piece.color);
+        }
+        ghost.appendChild(d);
+      }
+    }
+    dragLayer.appendChild(ghost);
+
+    const isTouch = e.pointerType === "touch";
+    const offsetY = isTouch ? cellPx*1.6 + 20 : cellPx*0.5;
+    const offsetX = cellPx*w/2;
+
+    function place(clientX, clientY){
+      ghost.style.left = (clientX - offsetX) + "px";
+      ghost.style.top = (clientY - offsetY - cellPx*h/2) + "px";
+      const boardRect = boardEl.getBoundingClientRect();
+      const localX = clientX - boardRect.left - 6;
+      const localY = (clientY - offsetY) - boardRect.top - 6;
+      const originC = Math.round(localX / (cellPx+3) - w/2 + 0.5);
+      const originR = Math.round(localY / (cellPx+3) - h/2 + 0.5);
+      return {originC, originR};
+    }
+
+    let lastPos = place(e.clientX, e.clientY);
+    showPreview(piece.shape, lastPos.originC, lastPos.originR);
+
+    function onMove(ev){
+      lastPos = place(ev.clientX, ev.clientY);
+      showPreview(piece.shape, lastPos.originC, lastPos.originR);
+    }
+    function onUp(){
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+      clearPreview();
+      ghost.remove();
+      sourceEl.classList.remove("dragging-source");
+
+      const ok = canPlace(piece.shape, lastPos.originC, lastPos.originR);
+      if(ok){
+        placePiece(piece.shape, piece.color, lastPos.originC, lastPos.originR, idx);
+        tray[idx] = null;
+        if(tray.every(p=>!p)){
+          renderTray();
+          refillTray();
+        } else {
+          renderTray();
+          checkGameOver();
+        }
+      }
+    }
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+  }
+
+  // ---------- game lifecycle ----------
+  async function endGame(){
+    if(gameOver) return;
+    gameOver = true;
+    stopTimer();
+    finalScoreEl.textContent = pad6(score);
+
+    wallet.bankedPoints += score;
+    renderWalletUI();
+    goPointsNoteEl.textContent = `獲得ポイント +${score}（ホームでお金に変えられます）`;
+    await saveWallet();
+
+    await saveBestIfHigher();
+    const isNewBest = best===score && score>0;
+    newBestNoteEl.textContent = isNewBest ? "全体のハイスコア更新！" : "";
+    goOverlay.hidden = false;
+  }
+
+  function newGame(){
+    gameOver = false;
+    score = 0;
+    timeLeft = GAME_TIME;
+    undoSnapshot = null;
+    fmtScore();
+    fmtTime();
+    goOverlay.hidden = true;
+    buildBoard();
+    syncPieceCellSize();
+    renderInvBar();
+    refillTray();
+    startTimer();
+  }
+
+  retryBtn.addEventListener("click", newGame);
+  window.addEventListener("resize", syncPieceCellSize);
+
+  (async function init(){
+    await loadBest();
+    await loadWallet();
+    showView("home");
+  })();
+})();
+</script>
+</body>
+</html>
